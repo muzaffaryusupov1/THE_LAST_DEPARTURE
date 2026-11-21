@@ -1,3 +1,4 @@
+using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -13,6 +14,9 @@ public class InteractionRaycaster : MonoBehaviour
     [Tooltip("The UI prompt (\"Press E to Interact\"). It is shown and hidden by this script.")]
     [SerializeField] private GameObject interactionPrompt;
 
+    [Tooltip("The text inside the prompt. If empty, it is found on the prompt object.")]
+    [SerializeField] private TMP_Text promptText;
+
     [Header("Settings")]
     [Tooltip("How far away (in meters) the player can interact with objects.")]
     [SerializeField] private float interactDistance = 3f;
@@ -22,6 +26,7 @@ public class InteractionRaycaster : MonoBehaviour
 
     private InputAction interactAction;
     private IInteractable currentTarget; // what we are looking at right now (or null)
+    private string lastActionText;       // the word currently shown in the prompt
 
     private void Awake()
     {
@@ -29,6 +34,11 @@ public class InteractionRaycaster : MonoBehaviour
         {
             Camera cam = GetComponentInChildren<Camera>();
             if (cam != null) cameraTransform = cam.transform;
+        }
+
+        if (promptText == null && interactionPrompt != null)
+        {
+            promptText = interactionPrompt.GetComponentInChildren<TMP_Text>(true);
         }
 
         // "Interact" (E key) comes from the project-wide Input Actions asset (Player map).
@@ -57,8 +67,13 @@ public class InteractionRaycaster : MonoBehaviour
         // 1. Find what we are looking at.
         currentTarget = FindTarget();
 
-        // 2. Show the prompt only while looking at something interactable.
+        // 2. Show the prompt only while looking at something interactable,
+        //    with that object's own action word ("Open", "Close"...).
         SetPromptVisible(currentTarget != null);
+        if (currentTarget != null)
+        {
+            SetPromptText(currentTarget.InteractionText);
+        }
 
         // 3. WasPressedThisFrame() is true only on the frame E goes down,
         //    so holding E does not trigger the object again and again.
@@ -81,6 +96,15 @@ public class InteractionRaycaster : MonoBehaviour
         }
 
         return null;
+    }
+
+    private void SetPromptText(string actionText)
+    {
+        // Only touch the UI when the word actually changes (not every frame).
+        if (promptText == null || actionText == lastActionText) return;
+
+        lastActionText = actionText;
+        promptText.text = "Press E to " + actionText;
     }
 
     private void SetPromptVisible(bool visible)
